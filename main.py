@@ -1,84 +1,63 @@
-"""
-Validaciones bases de 
-Carga nivel de JSON
-colisiones con paredes
-recoger llaves
-puerta que se abre con llaves
-"""
-
 from __future__ import annotations
 
 from world.loader import JsonLevelLoader
-from world.types import Direction, WalkContext, TileType, Pos
-
-def render(rows: int, cols: int, walls: set[Pos], door: Pos, keys: set[Pos], player: Pos) -> None:
-    for r in range(rows):
-        line = []
-        for c in range(cols):
-            pos = (r, c)
-            if pos == player:
-                line.append("P")
-            elif pos in keys:
-                line.append("K")
-            elif pos == door:
-                line.append("D")
-            elif pos in walls:
-                line.append("#")
-            else:
-                line.append(".")
-        print("".join(line))
-    print()
+from ui.console_ui import render, choose_level
+from game.controller import GameController
+from game import persistence, factory
+from game.config import GameConfig
 
 
 def main() -> None:
     loader = JsonLevelLoader("levels")
-    level = loader.load("level_01.json")
+    cfg = GameConfig()
 
-    world = level.world
-    player = level.player_start
-    keys = set(level.keys_positions)
-
-    # Para render: sacar walls del grid (simple para demo)
-    walls = set()
-    for r in range(world.rows):
-        for c in range(world.cols):
-            if world.tile_at((r, c)) == TileType.WALL:
-                walls.add((r, c))
-
-    keys_collected = 0
-
-    print("WASD para moverte, q para salir.\n")
     while True:
-        render(world.rows, world.cols, walls, level.door_pos, keys, player)
+        print("\n=== CALABOZO MÍSTICO ===")
+        print("1) Jugar (nuevo)")
+        print("2) Cargar partida")
+        print("3) Salir")
 
-        ctx = WalkContext(keys_collected=keys_collected, keys_required=4)
-        print(f"Llaves: {keys_collected}/4")
-        cmd = input("Move (w/a/s/d): ").strip().lower()
-        if cmd == "q":
+        opt = input("> ").strip()
+
+        if opt == "3":
+            print("👋 Hasta luego.")
             break
 
-        mapping = {"w": Direction.UP, "s": Direction.DOWN, "a": Direction.LEFT, "d": Direction.RIGHT}
-        if cmd not in mapping:
+        if opt == "1":
+            game = GameController(
+                loader=loader,
+                render=render,
+                choose_level=choose_level,
+                cfg=cfg,
+            )
+            game.run()
             continue
 
-        dr, dc = mapping[cmd].delta
-        new_pos = (player[0] + dr, player[1] + dc)
+        if opt == "2":
+            level_name = choose_level()
+            try:
+                loaded = persistence.do_load(cfg, loader, level_name)
+                game = GameController(
+                    loader=loader,
+                    render=render,
+                    choose_level=choose_level,
+                    cfg=cfg,
+                )
+                game.state = factory.from_loaded(loader, loaded)
 
-        if world.is_walkable(new_pos, ctx):
-            player = new_pos
+                from game import replay_manager
+                game.rec = replay_manager.start_recorder(cfg, game.state)
+                game.rec.frames[-1]["event"] = "load"
+                
+                game.run_loaded()
+            except Exception as e:
+                print(e)
+            continue
 
-        # recoger llave
-        if player in keys:
-            keys.remove(player)
-            keys_collected += 1
-            print("✅ Recogiste una llave!")
-
-        # ganar
-        if player == level.door_pos and keys_collected >= 4:
-            render(world.rows, world.cols, walls, level.door_pos, keys, player)
-            print("🎉 Ganaste! (demo consola)")
-            break
+        print("Opción inválida.")
 
 
 if __name__ == "__main__":
     main()
+
+
