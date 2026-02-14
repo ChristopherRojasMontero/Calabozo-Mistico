@@ -14,8 +14,6 @@ class GameController:
         self.state = None
         self.rec = None
 
-<<<<<<< HEAD
-=======
     # Métodos para la GUI
     def start_new_gui(self, level_name: str) -> None:
         self.state = factory.new_game(self.loader, level_name)
@@ -42,7 +40,6 @@ class GameController:
     def choose_level_gui(self) -> str | None:
         return "level_01.json"
 
->>>>>>> Camila-Branch
     # -------------------------
     # Inicio / reinicio
     # -------------------------
@@ -103,22 +100,14 @@ class GameController:
                     save_path = self.cfg.save_path_for(self.state.level_name)
                     persistence.do_save(self.cfg, self.state)
                     replay_manager.record_frame(self.state, self.rec, event="save")
-<<<<<<< HEAD
-                    print(f"💾 Guardado en: {save_path}\n")
-=======
                     print(f" Guardado en: {save_path}\n")
->>>>>>> Camila-Branch
                 except Exception as e:
                     print(e)
                 continue
 
             if opt == "2":
                 if not last_replay_path:
-<<<<<<< HEAD
-                    print("⚠ No hay replay guardado.")
-=======
                     print(" No hay replay guardado.")
->>>>>>> Camila-Branch
                     continue
 
                 print("\nModo replay:")
@@ -168,11 +157,7 @@ class GameController:
                     save_path = self.cfg.save_path_for(self.state.level_name)
                     persistence.do_save(self.cfg, self.state)
                     replay_manager.record_frame(self.state, self.rec, event="save")
-<<<<<<< HEAD
-                    print(f"💾 Guardado en: {save_path}\n")
-=======
                     print(f" Guardado en: {save_path}\n")
->>>>>>> Camila-Branch
                 except Exception as e:
                     print(e)
                 continue
@@ -190,15 +175,9 @@ class GameController:
             self.draw()
 
             if status == "death":
-<<<<<<< HEAD
-                print("💀 Un dragón te alcanzó. Fin del juego.")
-            else:
-                print("🎉 ¡Ganaste el juego!")
-=======
                 print(" Un dragón te alcanzó. Fin del juego.")
             else:
                 print(" ¡Ganaste el juego!")
->>>>>>> Camila-Branch
 
             last_replay_path = replay_manager.finish_and_save(
                 self.cfg,
@@ -206,11 +185,7 @@ class GameController:
                 self.state.level_name,
                 event=status,
             )
-<<<<<<< HEAD
-            print(f"📼 Replay guardado en: {last_replay_path}")
-=======
             print(f" Replay guardado en: {last_replay_path}")
->>>>>>> Camila-Branch
 
             action = self.post_game_menu(last_replay_path)
 
