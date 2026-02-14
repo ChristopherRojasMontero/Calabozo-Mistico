@@ -1,0 +1,78 @@
+PROMPTS UTILIZADOS
+prompt:
+¿cómo convierto el grid (fila, columna) en coordenadas de píxeles para dibujarlo en tkinter o arcade?
+
+prompt:
+mi dragón a persigue al jugador pero a veces se queda “pegado”. ¿cómo debuggeo mi bfs para saber si el grafo está mal construido?
+
+prompt:
+¿cómo hago que el dragón b realmente intercepte y no termine haciendo lo mismo que el dragón a?
+
+prompt:
+estoy usando manhattan para decisiones y bfs para movimiento. ¿cuándo debería cambiar a a* y cómo lo implemento en mi grid?
+
+prompt:
+¿cómo detecto colisión jugador–dragón en un sistema basado en posiciones discretas (grid)? ¿antes o después del movimiento?
+
+prompt:
+¿cómo hago para que el replay no dependa del estado actual del nivel y sea 100% determinista?
+
+prompt:
+¿cómo guardo un snapshot completo del game state en json sin romper referencias circulares?
+
+prompt:
+mi jugador atraviesa puertas aunque no tenga llaves. ¿cómo estructuro correctamente la validación de movimiento?
+
+prompt:
+¿cómo hago que el dragón c use la posición del dragón a para acorralar al jugador sin que se vuelvan dependientes circulares?
+
+prompt:
+¿cómo separo correctamente lógica de juego y renderizado para que mi replay no tenga efectos secundarios?
+
+prompt:
+¿cómo estructuro un game loop limpio en tkinter sin bloquear la interfaz?
+
+prompt:
+¿cómo calculo la distancia real entre dragón y jugador en un laberinto? ¿manhattan es suficiente o necesito path length real?
+
+prompt:
+¿cómo limito la velocidad de actualización del juego para que no dependa del rendimiento de la máquina?
+
+prompt:
+¿cómo hago que el replay pueda reproducirse a distintas velocidades sin usar time.sleep y sin congelar la gui?
+
+prompt:
+¿cómo diseño una arquitectura para que agregar un dragón d con nueva estrategia no rompa el sistema actual?
+
+prompt:
+¿cómo detecto si mi sistema tiene importaciones circulares antes de que explote en runtime?
+
+prompt:
+¿cómo puedo serializar enums (como direction) correctamente en json y reconstruirlos después?
+
+prompt:
+¿cómo hago pruebas unitarias para bfs en un grid pequeño para verificar que siempre devuelve el camino más corto?
+
+prompt:
+¿cómo mido el rendimiento de mi sistema de pathfinding cuando hay muchos dragones?
+
+prompt:
+¿cómo organizo correctamente carpetas (world, entities, game, replay) para evitar dependencias cruzadas?
+
+prompt:
+¿cómo verifico si dos entidades intentan moverse a la misma celda en el mismo turno?
+
+prompt:
+¿cómo implemento un sistema de turnos determinista donde el orden jugador→dragones afecte correctamente el resultado?
+
+prompt:
+¿cómo hago un modo debug que dibuje el path calculado por el bfs en pantalla?
+
+prompt:
+¿cómo puedo hacer que el dragón tenga “memoria” de la última posición del jugador si lo pierde de vista?
+
+prompt:
+¿cómo valido que mi replay realmente reconstruye EXACTAMENTE la partida original y no solo algo parecido?
+
+prompt:
+¿cómo evitar que mi estado global se vuelva inmanejable en un proyecto de juego pequeño pero creciente?
