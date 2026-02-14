@@ -25,7 +25,11 @@ def step_turn(cfg, state, cmd: str) -> tuple[str, str | None]:
         state.keys.remove(state.player)
         state.keys_collected += 1
         event = "key"
+<<<<<<< HEAD
         print("✅ Recogiste una llave!")
+=======
+        print(" Recogiste una llave!")
+>>>>>>> Camila-Branch
 
     pos_snapshot = {k: d.pos for k, d in state.dragons.items()}
     for d in state.dragons.values():

@@ -5,7 +5,11 @@ def do_save(cfg, state) -> None:
     data = {
         "level": state.level_name,
         "player": state.player,
+<<<<<<< HEAD
         "player_dir": state.player_dir,
+=======
+        "player_dir": state.last_dir,
+>>>>>>> Camila-Branch
         "keys_collected": state.keys_collected,
         "keys_remaining": state.keys,
         "dragons": {k: d.pos for k, d in state.dragons.items()},
