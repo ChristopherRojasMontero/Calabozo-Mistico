@@ -1,0 +1,45 @@
+{
+    "version": 1,
+    "level": "level_02.json",
+    "player": {
+        "position": [
+            2,
+            2
+        ],
+        "direction": "LEFT",
+        "keys_collected": 0
+    },
+    "dragons": {
+        "A": [
+            14,
+            18
+        ],
+        "B": [
+            8,
+            15
+        ],
+        "C": [
+            1,
+            14
+        ]
+    },
+    "keys_remaining": [
+        [
+            1,
+            18
+        ],
+        [
+            7,
+            2
+        ],
+        [
+            12,
+            17
+        ],
+        [
+            18,
+            1
+        ]
+    ],
+    "timestamp": 1771040446.5464683
+}
