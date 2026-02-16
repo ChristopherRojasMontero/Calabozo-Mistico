@@ -1,585 +1,291 @@
-import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
-
-from replay.replay_system import ReplayRecorder
-
+import pygame
+import sys
+import time
+import os
+from world.types import Direction, TileType
 
 class GameGUI:
     def __init__(self, controller):
         self.controller = controller
-
-        self.root = tk.Tk()
-        self.root.title("Calabozo Místico")
-        self.root.minsize(820, 520)
-
-        self.colors = {
-            "wall": "#22313f",
-            "floor": "#ecf0f1",
-            "player": "#e74c3c",
-            "dragon": "#8e44ad",
-            "key": "#f1c40f",
-            "door": "#27ae60",
-            "text": "#f7f7f7",
-            "muted": "#cfd8dc",
-            "bg": "#2f3e4e",
-            "card": "#253444",
-            "card2": "#1f2c3a",
-            "grid": "#dfe6e9",
-        }
-
-        self.cell_size = 30
-        self.canvas = None
-        self.status_label = None
-        self.level_window = None
-
-        self._replay_data = None
-        self._replay_static = None 
-        self._replay_i = 0
-        self._replay_mode = "auto" 
-        self._replay_running = False
-        self._replay_speed_ms = 120 
-        self._replay_screen = False  
-
-        self.style = ttk.Style(self.root)
-        self.setup_style()
-        self.setup_main_menu()
-
-
-    def setup_style(self):
-        try:
-            self.style.theme_use("clam")
-        except Exception:
-            pass
-
-        bg = self.colors["bg"]
-        card = self.colors["card"]
-        fg = self.colors["text"]
-
-        self.root.configure(bg=bg)
-
-        self.font_title = ("Segoe UI", 28, "bold")
-        self.font_h2 = ("Segoe UI", 12, "bold")
-        self.font_body = ("Segoe UI", 11)
-        self.font_small = ("Segoe UI", 10)
-
-        self.style.configure("TFrame", background=bg)
-        self.style.configure("Card.TFrame", background=card)
-        self.style.configure("Card2.TFrame", background=self.colors["card2"])
-
-        self.style.configure("TLabel", background=bg, foreground=fg, font=self.font_body)
-        self.style.configure("Title.TLabel", background=bg, foreground=fg, font=self.font_title)
-        self.style.configure("Card.TLabel", background=card, foreground=fg, font=self.font_body)
-        self.style.configure("Muted.TLabel", background=card, foreground=self.colors["muted"], font=self.font_small)
-        self.style.configure("H2.TLabel", background=card, foreground=fg, font=self.font_h2)
-
-        self.style.configure(
-            "Menu.TButton",
-            font=self.font_body,
-            padding=(18, 10),
-            background="#f6f7f8",
-            foreground="#111",
-            borderwidth=0,
-            relief="flat",
-        )
-        self.style.map(
-            "Menu.TButton",
-            background=[("active", "#e8eaed"), ("pressed", "#dfe3e6")],
-        )
-
-        self.style.configure(
-            "Primary.TButton",
-            font=("Segoe UI", 11, "bold"),
-            padding=(18, 10),
-            background="#2ecc71",
-            foreground="#0b1a12",
-            borderwidth=0,
-            relief="flat",
-        )
-        self.style.map(
-            "Primary.TButton",
-            background=[("active", "#28b463"), ("pressed", "#239b56")],
-        )
-
-        self.style.configure(
-            "Danger.TButton",
-            font=("Segoe UI", 11, "bold"),
-            padding=(18, 10),
-            background="#e74c3c",
-            foreground="#2b0f0c",
-            borderwidth=0,
-            relief="flat",
-        )
-        self.style.map(
-            "Danger.TButton",
-            background=[("active", "#d64537"), ("pressed", "#c0392b")],
-        )
-
-        self.style.configure("TScale", background=card)
-
-
-    def clear_window(self):
-        for w in self.root.winfo_children():
-            w.destroy()
-
-    def center_window(self, win=None):
-        win = win or self.root
-        win.update_idletasks()
-        w = win.winfo_reqwidth()
-        h = win.winfo_reqheight()
-        sw = win.winfo_screenwidth()
-        sh = win.winfo_screenheight()
-        x = (sw // 2) - (w // 2)
-        y = (sh // 2) - (h // 2)
-        win.geometry(f"+{x}+{y}")
-
-
-    def setup_main_menu(self):
-        self._replay_running = False
-        self._replay_screen = False
-
-        self.clear_window()
-        try:
-            self.root.unbind("<Key>")
-        except Exception:
-            pass
-
-        outer = ttk.Frame(self.root)
-        outer.pack(fill="both", expand=True)
-
-        header = ttk.Frame(outer)
-        header.pack(side="top", fill="x", pady=(36, 14))
-        ttk.Label(header, text="CALABOZO MÍSTICO", style="Title.TLabel").pack()
-
-        card = ttk.Frame(outer, style="Card.TFrame", padding=(26, 22))
-        card.pack(side="top")
-
-        ttk.Label(card, text="Menú", style="H2.TLabel").pack(anchor="w", pady=(0, 8))
-        ttk.Label(card, text="Elige una opción para iniciar.", style="Muted.TLabel").pack(anchor="w", pady=(0, 16))
-
-        btns = ttk.Frame(card, style="Card.TFrame")
-        btns.pack(fill="x")
-
-        ttk.Button(btns, text="Nueva Partida", command=self.new_game, style="Primary.TButton").pack(fill="x", pady=6)
-        ttk.Button(btns, text="Cargar Partida", command=self.load_game, style="Menu.TButton").pack(fill="x", pady=6)
-        ttk.Button(btns, text="Salir", command=self.root.quit, style="Menu.TButton").pack(fill="x", pady=6)
-
-        tip = ttk.Label(
-            outer,
-            text="Tip: en partida usa WASD, G para guardar, Q para menú. En replay: Espacio/→ para avanzar.",
-            font=self.font_small,
-            foreground=self.colors["muted"],
-            background=self.colors["bg"],
-        )
-        tip.pack(side="top", pady=(18, 0))
-
-        self.center_window()
-
-    def new_game(self):
-        self.show_level_selection(mode="new")
-
-    def load_game(self):
-        self.show_level_selection(mode="load")
-
-    def show_level_selection(self, mode: str):
-        if self.level_window and self.level_window.winfo_exists():
-            self.level_window.focus_force()
-            return
-
-        w = tk.Toplevel(self.root)
-        self.level_window = w
-        w.title("Seleccionar Nivel")
-        w.configure(bg=self.colors["bg"])
-        w.resizable(False, False)
-        w.transient(self.root)
-        w.grab_set()
-
-        card = ttk.Frame(w, style="Card.TFrame", padding=(18, 16))
-        card.pack(fill="both", expand=True)
-
-        title = "Nueva partida" if mode == "new" else "Cargar partida"
-        ttk.Label(card, text=title, style="H2.TLabel").pack(anchor="w", pady=(0, 6))
-        ttk.Label(card, text="Elige un nivel:", style="Muted.TLabel").pack(anchor="w", pady=(0, 12))
-
-        levels = ["level_01.json", "level_02.json", "level_03.json"]
-
-        for lvl in levels:
-            ttk.Button(
-                card,
-                text=lvl,
-                style="Menu.TButton",
-                command=lambda l=lvl: self.start_with_level(l, mode, w),
-            ).pack(fill="x", pady=6)
-
-        ttk.Button(card, text="Cancelar", style="Menu.TButton", command=w.destroy).pack(fill="x", pady=(10, 0))
-
-        self.center_window(w)
-
-    def start_with_level(self, level_name: str, mode: str, window: tk.Toplevel):
-        window.destroy()
-        self.level_window = None
-
-        if mode == "new":
-            self.controller.start_new_gui(level_name)
-            self.setup_game_screen()
-        else:
-            success = self.controller.load_game_gui(level_name)
-            if success:
-                self.setup_game_screen()
-            else:
-                messagebox.showerror("Error", f"No hay partida guardada para {level_name}")
-
-
-    def setup_game_screen(self):
-        self._replay_screen = False
-        self.clear_window()
-        state = self.controller.state
-
-        outer = ttk.Frame(self.root)
-        outer.pack(fill="both", expand=True, padx=12, pady=12)
-
-        map_card = ttk.Frame(outer, style="Card.TFrame", padding=(12, 12))
-        map_card.pack(side="left", fill="both", expand=True)
-
-        ttk.Label(map_card, text=f"Nivel: {state.level_name}", style="Card.TLabel").pack(anchor="w", pady=(0, 8))
-
-        canvas_holder = ttk.Frame(map_card, style="Card2.TFrame", padding=8)
-        canvas_holder.pack(fill="both", expand=True)
-
-        self.canvas = tk.Canvas(
-            canvas_holder,
-            width=state.world.cols * self.cell_size,
-            height=state.world.rows * self.cell_size,
-            bg=self.colors["floor"],
-            highlightthickness=0,
-        )
-        self.canvas.pack()
-
-        info_card = ttk.Frame(outer, style="Card.TFrame", padding=(16, 16))
-        info_card.pack(side="right", fill="y", padx=(12, 0))
-
-        ttk.Label(info_card, text="Estado", style="H2.TLabel").pack(anchor="w", pady=(0, 8))
-
-        self.status_label = ttk.Label(
-            info_card,
-            text=f"Llaves: 0/{self.controller.cfg.keys_required}",
-            style="Card.TLabel",
-            font=("Segoe UI", 13, "bold"),
-        )
-        self.status_label.pack(anchor="w", pady=(0, 10))
-
-        ttk.Separator(info_card, orient="horizontal").pack(fill="x", pady=14)
-
-        ttk.Label(info_card, text="Controles", style="H2.TLabel").pack(anchor="w", pady=(0, 6))
-        ttk.Label(
-            info_card,
-            text="WASD  - Mover\nG     - Guardar\nQ     - Menú",
-            style="Card.TLabel",
-            justify="left",
-        ).pack(anchor="w")
-
-        self.root.bind("<Key>", self.handle_keypress)
-
-        self.render_game()
-        self.center_window()
-
-    def render_game(self):
-        if not self.canvas:
-            return
-
-        self.canvas.delete("all")
-        state = self.controller.state
-
-        rows, cols = state.world.rows, state.world.cols
-        self._draw_grid(rows, cols)
-
-        for r, c in state.walls:
-            self.draw_cell(r, c, self.colors["wall"], shape="rect")
-
-        dr, dc = state.level.door_pos
-        self.draw_cell(dr, dc, self.colors["door"], shape="rect")
-
-        for r, c in state.keys:
-            self.draw_cell(r, c, self.colors["key"], shape="oval")
-
-        for d in state.dragons.values():
-            self.draw_cell(d.pos[0], d.pos[1], self.colors["dragon"], shape="rect")
-
-        self.draw_cell(state.player[0], state.player[1], self.colors["player"], shape="oval")
-
-        if self.status_label:
-            self.status_label.config(text=f"Llaves: {state.keys_collected}/{self.controller.cfg.keys_required}")
-
-    def _draw_grid(self, rows: int, cols: int):
-        for r in range(rows + 1):
-            y = r * self.cell_size
-            self.canvas.create_line(0, y, cols * self.cell_size, y, fill=self.colors["grid"])
-        for c in range(cols + 1):
-            x = c * self.cell_size
-            self.canvas.create_line(x, 0, x, rows * self.cell_size, fill=self.colors["grid"])
-
-    def draw_cell(self, r: int, c: int, color: str, shape: str = "rect"):
-        x1, y1 = c * self.cell_size, r * self.cell_size
-        x2, y2 = x1 + self.cell_size, y1 + self.cell_size
-
-        pad = 3
-        if shape == "rect":
-            self.canvas.create_rectangle(x1 + 1, y1 + 1, x2 - 1, y2 - 1, fill=color, outline="")
-        else:
-            self.canvas.create_oval(x1 + pad, y1 + pad, x2 - pad, y2 - pad, fill=color, outline="")
-
-    def handle_keypress(self, event):
-        key = (event.char or "").lower()
-
-        if key in ["w", "a", "s", "d"]:
-            status, event_type = self.controller.step_gui(key)
-            self.render_game()
-
-            if status == "death":
-                messagebox.showinfo("Fin del Juego", "Un dragón te alcanzó.")
-                self.setup_main_menu()
-
-            elif status == "win":
-                messagebox.showinfo("¡Victoria!", "¡Has escapado del calabozo!")
-                self.show_win_options()
-
-        elif key == "g":
-            self.controller.save_game_gui()
-            messagebox.showinfo("Guardado", "Partida guardada correctamente.")
-
-        elif key == "q":
-            self.setup_main_menu()
-
-    def show_win_options(self):
-        """
-        Requisito: al completar el juego, ofrecer "Ver repetición".
-        Replay: auto (velocidad) o paso a paso (tecla).
-        """
-        rec = getattr(self.controller, "rec", None)
-        if rec is None or not getattr(rec, "frames", None):
-            messagebox.showwarning("Replay", "No hay datos de replay (¿se está grabando la partida?).")
-            self.setup_main_menu()
-            return
-        try:
-            self.root.unbind("<Key>")
-        except Exception:
-            pass
-
-        win = tk.Toplevel(self.root)
-        win.title("Partida completada")
-        win.configure(bg=self.colors["bg"])
-        win.resizable(False, False)
-        win.transient(self.root)
-        win.grab_set()
-
-        card = ttk.Frame(win, style="Card.TFrame", padding=(18, 16))
-        card.pack(fill="both", expand=True)
-
-        ttk.Label(card, text="¡Victoria!", style="H2.TLabel").pack(anchor="w", pady=(0, 6))
-        ttk.Label(card, text="¿Quieres ver la repetición de la partida?", style="Muted.TLabel").pack(anchor="w", pady=(0, 14))
-
-        btns = ttk.Frame(card, style="Card.TFrame")
-        btns.pack(fill="x")
-
-        ttk.Button(btns, text="Ver replay (Automático)", style="Primary.TButton",
-                   command=lambda: self._start_replay_from_win(win, mode="auto")).pack(fill="x", pady=6)
-
-        ttk.Button(btns, text="Ver replay (Paso a paso)", style="Menu.TButton",
-                   command=lambda: self._start_replay_from_win(win, mode="step")).pack(fill="x", pady=6)
-
-        ttk.Button(btns, text="Volver al menú", style="Menu.TButton",
-                   command=lambda: (win.destroy(), self.setup_main_menu())).pack(fill="x", pady=(10, 0))
-
-        self.center_window(win)
-
-    def _start_replay_from_win(self, win_dialog: tk.Toplevel, mode: str):
-        win_dialog.destroy()
-
-        state = self.controller.state
-        rows, cols = state.world.rows, state.world.cols
-        walls = set(state.walls)
-        door_pos = tuple(state.level.door_pos)
-
-        rec: ReplayRecorder = self.controller.rec
-        replay_data = rec.to_dict(extra_meta={"door_pos": list(door_pos), "rows": rows, "cols": cols})
-
-        self.start_replay_gui(replay_data, rows, cols, walls, door_pos, mode=mode)
-
-    def start_replay_gui(self, replay_data, rows, cols, walls, door_pos, mode: str):
-        """
-        Pantalla replay que reproduce sin congelar.
-        - auto: usa after con velocidad configurable
-        - step: avanza con Space o Right Arrow
-        """
-        self._replay_data = replay_data
-        self._replay_static = (rows, cols, walls, door_pos)
-        self._replay_i = 0
-        self._replay_mode = mode
-        self._replay_running = True
-        self._replay_screen = True
-
-        self.clear_window()
-
-        outer = ttk.Frame(self.root)
-        outer.pack(fill="both", expand=True, padx=12, pady=12)
-
-        map_card = ttk.Frame(outer, style="Card.TFrame", padding=(12, 12))
-        map_card.pack(side="left", fill="both", expand=True)
-
-        ttk.Label(map_card, text="REPLAY", style="Card.TLabel").pack(anchor="w", pady=(0, 8))
-
-        canvas_holder = ttk.Frame(map_card, style="Card2.TFrame", padding=8)
-        canvas_holder.pack(fill="both", expand=True)
-
-        self.canvas = tk.Canvas(
-            canvas_holder,
-            width=cols * self.cell_size,
-            height=rows * self.cell_size,
-            bg=self.colors["floor"],
-            highlightthickness=0,
-        )
-        self.canvas.pack()
-
-        info_card = ttk.Frame(outer, style="Card.TFrame", padding=(16, 16))
-        info_card.pack(side="right", fill="y", padx=(12, 0))
-
-        ttk.Label(info_card, text="Controles Replay", style="H2.TLabel").pack(anchor="w", pady=(0, 8))
-
-        self.status_label = ttk.Label(
-            info_card,
-            text="Frame: 0/0",
-            style="Card.TLabel",
-            font=("Segoe UI", 12, "bold"),
-        )
-        self.status_label.pack(anchor="w", pady=(0, 10))
-
-        ttk.Label(info_card, text=f"Modo: {mode.upper()}", style="Muted.TLabel").pack(anchor="w", pady=(0, 12))
-
-        ttk.Label(info_card, text="Velocidad (ms/frame)", style="H2.TLabel").pack(anchor="w", pady=(0, 6))
-
-        speed = tk.IntVar(value=self._replay_speed_ms)
-        scale = ttk.Scale(
-            info_card,
-            from_=40,
-            to=400,
-            orient="horizontal",
-            command=lambda v: self._set_replay_speed(int(float(v))),
-        )
-        scale.set(self._replay_speed_ms)
-        scale.pack(fill="x", pady=(0, 10))
-
-        speed_label = ttk.Label(info_card, text=f"{self._replay_speed_ms} ms", style="Card.TLabel")
-        speed_label.pack(anchor="w", pady=(0, 12))
-
-        def _sync_speed_label():
-            speed_label.config(text=f"{self._replay_speed_ms} ms")
-            if self._replay_screen:
-                self.root.after(120, _sync_speed_label)
-        _sync_speed_label()
-
-        ttk.Separator(info_card, orient="horizontal").pack(fill="x", pady=14)
-
-        ttk.Button(info_card, text="Reiniciar replay", style="Menu.TButton", command=self._replay_restart).pack(fill="x", pady=6)
-        ttk.Button(info_card, text="Volver al menú", style="Menu.TButton", command=self.setup_main_menu).pack(fill="x", pady=6)
-
-        self.root.bind("<Key>", self._handle_replay_keypress)
-
-        self._render_replay_frame()
-        if mode == "auto":
-            self._replay_tick_auto()
-
-        self.center_window()
-
-    def _set_replay_speed(self, ms: int):
-        self._replay_speed_ms = max(20, ms)
-
-    def _replay_restart(self):
-        self._replay_i = 0
-        self._replay_running = True
-        self._render_replay_frame()
-        if self._replay_mode == "auto":
-            self._replay_tick_auto()
-
-    def _handle_replay_keypress(self, event):
-        if not self._replay_screen:
-            return
-
-        k = event.keysym.lower()
-
-        if self._replay_mode == "step":
-            if k in ("space", "right", "return"):
-                self._replay_i += 1
-                self._render_replay_frame()
-            elif k == "escape":
-                self.setup_main_menu()
-
-        else:
-            if k == "space":
-                self._replay_running = not self._replay_running
-                if self._replay_running:
-                    self._replay_tick_auto()
-            elif k == "escape":
-                self.setup_main_menu()
-
-    def _replay_tick_auto(self):
-        if not self._replay_screen:
-            return
-        if not self._replay_running:
-            return
-
-        self._replay_i += 1
-        self._render_replay_frame()
+        pygame.init()
+        pygame.display.set_caption("Calabozo Místico")
         
-        frames = self._replay_data["frames"]
-        if self._replay_i >= len(frames) - 1:
-            self._replay_running = False
-            return
+        # Paleta de colores profesional
+        self.colors = {
+            "wall": (44, 62, 80),      # Azul oscuro
+            "floor": (236, 240, 241),   # Blanco grisáceo
+            "player": (231, 76, 60),    # Rojo
+            "dragon": (142, 68, 173),   # Púrpura
+            "key": (241, 196, 15),      # Dorado
+            "door": (39, 174, 96),      # Verde
+            "text": (255, 255, 255),    # Blanco
+            "bg": (52, 73, 94),         # Gris azulado
+            "panel": (44, 62, 80),
+            "button": (44, 62, 80),
+            "button_hover": (60, 80, 100)
+        }
+        
+        self.cell_size = 30
+        self.font = pygame.font.SysFont("Helvetica", 24, bold=True)
+        self.small_font = pygame.font.SysFont("Helvetica", 18)
+        self.screen = None
+        self.clock = pygame.time.Clock()
+        self.running = True
+        self.mode = "menu" # "menu", "level_select", "game", "replay"
+        self.pending_action = None # "new" o "load"
+        self.replay_data = None
+        self.replay_index = 0
 
-        self.root.after(self._replay_speed_ms, self._replay_tick_auto)
+    def center_window(self, width, height):
+        self.screen = pygame.display.set_mode((width, height))
 
-    def _render_replay_frame(self):
-        if not self.canvas or not self._replay_data:
-            return
+    def draw_text(self, text, x, y, color=None, center=False, font=None):
+        if color is None: color = self.colors["text"]
+        if font is None: font = self.font
+        img = font.render(text, True, color)
+        rect = img.get_rect()
+        if center:
+            rect.center = (x, y)
+        else:
+            rect.topleft = (x, y)
+        self.screen.blit(img, rect)
 
-        rows, cols, walls, door_pos = self._replay_static
-        frames = self._replay_data["frames"]
-        n = len(frames)
+    def main_menu(self):
+        self.center_window(400, 450)
+        self.mode = "menu"
+        while self.mode == "menu":
+            self.screen.fill(self.colors["bg"])
+            self.draw_text("CALABOZO MÍSTICO", 200, 80, center=True)
+            
+            self.draw_button("Nueva Partida", 200, 180, 220, 45, lambda: self.prepare_level_select("new"))
+            self.draw_button("Cargar Partida", 200, 250, 220, 45, lambda: self.prepare_level_select("load"))
+            self.draw_button("Salir", 200, 320, 220, 45, sys.exit)
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+            
+            pygame.display.flip()
+            self.clock.tick(30)
 
-        i = max(0, min(self._replay_i, n - 1))
-        fr = frames[i]
+    def draw_button(self, text, x, y, w, h, action=None):
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        rect = pygame.Rect(0, 0, w, h)
+        rect.center = (x, y)
+        
+        if rect.collidepoint(mouse):
+            pygame.draw.rect(self.screen, self.colors["button_hover"], rect, border_radius=5)
+            if click[0] == 1 and action:
+                time.sleep(0.15)
+                action()
+        else:
+            pygame.draw.rect(self.screen, self.colors["button"], rect, border_radius=5)
+        
+        self.draw_text(text, x, y, center=True, font=self.small_font)
 
-        keys_remaining = {tuple(k) for k in fr.get("keys_remaining", [])}
-        player_pos = tuple(fr["player_pos"])
-        dragons_pos = {k: tuple(v) for k, v in fr.get("dragons_pos", {}).items()}
-        keys_collected = fr.get("keys_collected", 0)
+    def prepare_level_select(self, action_type):
+        self.pending_action = action_type
+        self.mode = "level_select"
+        self.show_level_selection()
 
-        self.canvas.delete("all")
-        self._draw_grid(rows, cols)
+    def show_level_selection(self):
+        # Escanear niveles disponibles
+        levels_dir = "levels"
+        try:
+            levels = [f for f in os.listdir(levels_dir) if f.endswith(".json")]
+            levels.sort()
+        except Exception:
+            levels = []
 
-        for r, c in walls:
-            self.draw_cell(r, c, self.colors["wall"], shape="rect")
+        self.center_window(400, 150 + (len(levels) * 60))
+        
+        while self.mode == "level_select":
+            self.screen.fill(self.colors["bg"])
+            title = "Seleccionar Nivel" if self.pending_action == "new" else "Cargar Nivel"
+            self.draw_text(title, 200, 50, center=True)
+            
+            y_offset = 120
+            for lvl in levels:
+                display_name = lvl.replace(".json", "").replace("_", " ").title()
+                self.draw_button(display_name, 200, y_offset, 250, 40, lambda l=lvl: self.start_game(l))
+                y_offset += 60
+            
+            self.draw_button("Volver", 200, y_offset + 20, 150, 35, self.main_menu)
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                    self.main_menu()
+            
+            pygame.display.flip()
+            self.clock.tick(30)
 
-        self.draw_cell(door_pos[0], door_pos[1], self.colors["door"], shape="rect")
+    def start_game(self, level_name):
+        if self.pending_action == "new":
+            self.controller.start_new_gui(level_name)
+        else:
+            if not self.controller.load_game_gui(level_name):
+                # Si falla la carga, podríamos mostrar un mensaje temporalmente
+                print(f"Error: No hay partida guardada para {level_name}")
+                return
+        
+        self.mode = "game"
+        self.run_game()
 
-        for r, c in keys_remaining:
-            self.draw_cell(r, c, self.colors["key"], shape="oval")
+    def run_game(self):
+        state = self.controller.state
+        width = state.world.cols * self.cell_size + 200
+        height = state.world.rows * self.cell_size
+        self.center_window(width, height)
+        
+        while self.mode == "game":
+            self.screen.fill(self.colors["floor"])
+            self.render_world()
+            self.draw_ui_panel()
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    key_map = {pygame.K_w: 'w', pygame.K_a: 'a', pygame.K_s: 's', pygame.K_d: 'd'}
+                    if event.key in key_map:
+                        status, _ = self.controller.step_gui(key_map[event.key])
+                        if status in ["win", "death"]:
+                            self.controller.finish_replay_gui(status)
+                            self.end_screen(status)
+                    elif event.key == pygame.K_g:
+                        self.controller.save_game_gui()
+                        # Feedback visual simple para el guardado
+                        self.draw_text("¡Guardado!", self.screen.get_width() - 100, 250, color=(46, 204, 113), font=self.small_font)
+                        pygame.display.flip()
+                        time.sleep(0.5)
+                    elif event.key == pygame.K_q:
+                        self.main_menu()
+            
+            pygame.display.flip()
+            self.clock.tick(30)
 
-        for _, pos in dragons_pos.items():
-            self.draw_cell(pos[0], pos[1], self.colors["dragon"], shape="rect")
+    def render_world(self):
+            """Dibuja el grid y todas las entidades."""
+            state = self.controller.state
+            
+            # 1. Dibujar el Suelo (Fondo)
+            self.screen.fill(self.colors["floor"])
 
-        self.draw_cell(player_pos[0], player_pos[1], self.colors["player"], shape="oval")
+            # 2. DIBUJAR LA CUADRÍCULA (GRID) - Nueva parte estética
+            grid_color = (200, 200, 200) # Gris claro para las líneas
+            for r in range(state.world.rows + 1):
+                pygame.draw.line(self.screen, grid_color, (0, r * self.cell_size), (state.world.cols * self.cell_size, r * self.cell_size), 1)
+            for c in range(state.world.cols + 1):
+                pygame.draw.line(self.screen, grid_color, (c * self.cell_size, 0), (c * self.cell_size, state.world.rows * self.cell_size), 1)
 
+            # 3. Dibujar Paredes
+            for r, c in state.walls:
+                pygame.draw.rect(self.screen, self.colors["wall"], (c*self.cell_size, r*self.cell_size, self.cell_size, self.cell_size))
+            
+            # 4. Dibujar Puerta
+            dr, dc = state.level.door_pos
+            pygame.draw.rect(self.screen, self.colors["door"], (dc*self.cell_size, dr*self.cell_size, self.cell_size, self.cell_size))
+            
+            # 5. Dibujar Llaves
+            for r, c in state.keys:
+                pygame.draw.circle(self.screen, self.colors["key"], (c*self.cell_size + self.cell_size//2, r*self.cell_size + self.cell_size//2), self.cell_size//3)
+                
+            # 6. Dibujar Dragones
+            for d in state.dragons.values():
+                pygame.draw.rect(self.screen, self.colors["dragon"], (d.pos[1]*self.cell_size, d.pos[0]*self.cell_size, self.cell_size, self.cell_size))
+                
+            # 7. Dibujar Jugador
+            pygame.draw.circle(self.screen, self.colors["player"], (state.player[1]*self.cell_size + self.cell_size//2, state.player[0]*self.cell_size + self.cell_size//2), self.cell_size//2 - 2)
 
-        if self.status_label:
-            self.status_label.config(
-                text=f"Frame: {i + 1}/{n} | Llaves: {keys_collected}/{self._replay_data['meta'].get('keys_required', '?')}"
-            )
+    def draw_ui_panel(self):
+        state = self.controller.state
+        panel_x = state.world.cols * self.cell_size
+        pygame.draw.rect(self.screen, self.colors["panel"], (panel_x, 0, 200, self.screen.get_height()))
+        
+        self.draw_text("ESTADO", panel_x + 20, 30, color=(200, 200, 200), font=self.small_font)
+        self.draw_text(f"Nivel: {state.level_name.split('.')[0]}", panel_x + 20, 60, font=self.small_font)
+        self.draw_text(f"Llaves: {state.keys_collected}/{self.controller.cfg.keys_required}", panel_x + 20, 90, font=self.small_font)
+        
+        self.draw_text("CONTROLES", panel_x + 20, 160, color=(200, 200, 200), font=self.small_font)
+        self.draw_text("WASD - Mover", panel_x + 20, 190, font=self.small_font)
+        self.draw_text("G - Guardar", panel_x + 20, 220, font=self.small_font)
+        self.draw_text("Q - Salir", panel_x + 20, 250, font=self.small_font)
+
+    def end_screen(self, status):
+        self.center_window(400, 350)
+        while True:
+            self.screen.fill(self.colors["bg"])
+            msg = "¡HAS GANADO!" if status == "win" else "HAS MUERTO..."
+            color = self.colors["door"] if status == "win" else self.colors["player"]
+            self.draw_text(msg, 200, 80, center=True, color=color)
+            
+            self.draw_button("Ver Repetición", 200, 180, 220, 45, self.start_replay)
+            self.draw_button("Menú Principal", 200, 250, 220, 45, self.main_menu)
+            
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+            
+            pygame.display.flip()
+            self.clock.tick(30)
+
+    def start_replay(self):
+        last_replay_path = self.controller.cfg.replay_path_for(self.controller.state.level_name)
+        from replay.replay_system import load_replay
+        try:
+            self.replay_data = load_replay(last_replay_path)
+            self.replay_index = 0
+            self.mode = "replay"
+            self.run_replay()
+        except Exception:
+            self.main_menu()
+
+    def run_replay(self):
+        frames = self.replay_data["frames"]
+        state = self.controller.state
+        width = state.world.cols * self.cell_size + 200
+        height = state.world.rows * self.cell_size
+        self.center_window(width, height)
+        
+        while self.mode == "replay":
+            if self.replay_index < len(frames):
+                self.screen.fill(self.colors["floor"])
+                fr = frames[self.replay_index]
+                
+                # Renderizado estático
+                for r, c in state.walls:
+                    pygame.draw.rect(self.screen, self.colors["wall"], (c*self.cell_size, r*self.cell_size, self.cell_size, self.cell_size))
+                dr, dc = state.level.door_pos
+                pygame.draw.rect(self.screen, self.colors["door"], (dc*self.cell_size, dr*self.cell_size, self.cell_size, self.cell_size))
+                
+                # Renderizado dinámico del replay
+                for r, c in fr["keys_remaining"]:
+                    pygame.draw.circle(self.screen, self.colors["key"], (c*self.cell_size + self.cell_size//2, r*self.cell_size + self.cell_size//2), self.cell_size//3)
+                for k, pos in fr["dragons_pos"].items():
+                    pygame.draw.rect(self.screen, self.colors["dragon"], (pos[1]*self.cell_size, pos[0]*self.cell_size, self.cell_size, self.cell_size))
+                pygame.draw.circle(self.screen, self.colors["player"], (fr["player_pos"][1]*self.cell_size + self.cell_size//2, fr["player_pos"][0]*self.cell_size + self.cell_size//2), self.cell_size//2 - 2)
+                
+                # Panel de Replay
+                pygame.draw.rect(self.screen, self.colors["panel"], (state.world.cols * self.cell_size, 0, 200, height))
+                self.draw_text("MODO REPLAY", state.world.cols * self.cell_size + 20, 50, color=(46, 204, 113), font=self.small_font)
+                self.draw_text(f"Frame: {self.replay_index+1}", state.world.cols * self.cell_size + 20, 80, font=self.small_font)
+                self.draw_text("Presiona Q para salir", state.world.cols * self.cell_size + 20, 150, font=self.small_font, color=(200, 200, 200))
+                
+                self.replay_index += 1
+                pygame.display.flip()
+                time.sleep(self.controller.cfg.replay_delay)
+            else:
+                self.main_menu()
+                
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                    self.main_menu()
+            self.clock.tick(30)
 
     def run(self):
-        self.root.mainloop()
-
-
-def choose_level_gui_dialog():
-    return "level_01.json"
-
-
+        self.main_menu()
