@@ -42,4 +42,3 @@ class DragonB(Dragon):
         goal = desired if world.is_walkable(desired, self.walk_ctx()) else self.nearest_walkable(desired, world)
 
         return goal if goal is not None else player_pos
-

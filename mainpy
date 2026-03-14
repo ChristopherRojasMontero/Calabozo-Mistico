@@ -5,6 +5,7 @@ from game.controller import GameController
 from game.config import GameConfig
 
 def main():
+     
     loader = JsonLevelLoader("levels")
     cfg = GameConfig()
     

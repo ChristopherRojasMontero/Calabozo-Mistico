@@ -223,6 +223,7 @@ Los archivos de repeticion se almacenan en la carpeta `replay/`.
 - Python 3
 - JSON
 - Programacion orientada a objetos
+- Pygame
 
 ### Licencia
 

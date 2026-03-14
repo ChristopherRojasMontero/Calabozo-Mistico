@@ -37,6 +37,14 @@ class GameController:
         persistence.do_save(self.cfg, self.state)
         replay_manager.record_frame(self.state, self.rec, event="save")
 
+    def finish_replay_gui(self, status: str) -> None:
+        replay_manager.finish_and_save(
+            self.cfg,
+            self.rec,
+            self.state.level_name,
+            event=status,
+        )
+
     def choose_level_gui(self) -> str | None:
         return "level_01.json"
 
@@ -200,7 +208,3 @@ class GameController:
             if action == "restart_choose":
                 self.start_new()
                 continue
-
-
-
-
